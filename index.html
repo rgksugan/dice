@@ -184,6 +184,48 @@
 
         rollBtn.addEventListener('click', rollDice);
 
+        // Shake detection using DeviceMotion API
+        const shakeThreshold = 15;
+        let lastShakeTime = 0;
+        let hasAccelerometer = false;
+
+        function handleMotion(event) {
+            const { x, y, z } = event.accelerationIncludingGravity || {};
+            if (x == null) return;
+
+            // First real motion event confirms accelerometer exists
+            if (!hasAccelerometer) {
+                hasAccelerometer = true;
+                rollBtn.style.display = 'none';
+            }
+
+            const acceleration = Math.sqrt(x * x + y * y + z * z);
+            const now = Date.now();
+
+            if (acceleration > shakeThreshold && now - lastShakeTime > 1000) {
+                lastShakeTime = now;
+                rollDice();
+            }
+        }
+
+        // Request permission on iOS 13+ (requires user gesture)
+        function enableShake() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(permission => {
+                        if (permission === 'granted') {
+                            window.addEventListener('devicemotion', handleMotion);
+                        }
+                    });
+            } else if ('DeviceMotionEvent' in window) {
+                window.addEventListener('devicemotion', handleMotion);
+            }
+        }
+
+        // Attach shake on first tap (needed for iOS permission)
+        document.body.addEventListener('click', () => enableShake(), { once: true });
+        enableShake();
+
         // Show initial state
         showFace(1);
     </script>
